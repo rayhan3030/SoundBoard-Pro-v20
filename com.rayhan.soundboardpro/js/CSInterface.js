@@ -1,0 +1,1 @@
+function CSInterface(){} CSInterface.prototype.evalScript=function(s,c){ if(window.__adobe_cep__){ window.__adobe_cep__.evalScript(s,c);} else if(c) c(""); };
