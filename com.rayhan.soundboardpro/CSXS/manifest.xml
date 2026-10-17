@@ -1,45 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.rayhan.soundboardpro" ExtensionBundleVersion="15.3.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <ExtensionList>
-        <Extension Id="com.rayhan.soundboardpro" Version="15.3.0" />
-    </ExtensionList>
-    <ExecutionEnvironment>
-        <HostList>
-            <Host Name="PPRO" Version="[12.0,99.9]" />
-        </HostList>
-        <LocaleList>
-            <Locale Code="All" />
-        </LocaleList>
-        <RequiredRuntimeList>
-            <RequiredRuntime Name="CSXS" Version="7.0" />
-        </RequiredRuntimeList>
-    </ExecutionEnvironment>
-    <DispatchInfoList>
-        <Extension Id="com.rayhan.soundboardpro">
-            <DispatchInfo>
-                <Resources>
-                    <MainPath>./index.html</MainPath>
-                    <ScriptPath>./jsx/host.jsx</ScriptPath>
-                    <CEFCommandLine>
-                        <Parameter>--enable-nodejs</Parameter>
-                        <Parameter>--mixed-context</Parameter>
-                        <Parameter>--allow-file-access-from-files</Parameter>
-                    </CEFCommandLine>
-                </Resources>
-                <Lifecycle>
-                    <AutoVisible>true</AutoVisible>
-                </Lifecycle>
-                <UI>
-                    <Type>Panel</Type>
-                    <Menu>SoundBoard Pro</Menu>
-                    <Geometry>
-                        <Size>
-                            <Width>800</Width>
-                            <Height>600</Height>
-                        </Size>
-                    </Geometry>
-                </UI>
-            </DispatchInfo>
-        </Extension>
-    </DispatchInfoList>
+<ExtensionManifest Version="8.0" ExtensionBundleId="com.rayhan.soundboardpro" ExtensionBundleVersion="15.3.0" ExtensionBundleName="SoundBoard Pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ExtensionList><Extension Id="com.rayhan.soundboardpro" Version="15.3.0"/></ExtensionList>
+  <ExecutionEnvironment><HostList><Host Name="PPRO" Version="[12.0,99.9]"/></HostList><LocaleList><Locale Code="All"/></LocaleList><RequiredRuntimeList><RequiredRuntime Name="CSXS" Version="11.0"/></RequiredRuntimeList></ExecutionEnvironment>
+  <DispatchInfoList><Extension Id="com.rayhan.soundboardpro"><DispatchInfo><Resources><MainPath>./index.html</MainPath><ScriptPath>./jsx/host.jsx</ScriptPath><CEFCommandLine><Parameter>--enable-nodejs</Parameter><Parameter>--mixed-context</Parameter></CEFCommandLine></Resources><Lifecycle><AutoVisible>true</AutoVisible></Lifecycle><UI><Type>Panel</Type><Menu>SoundBoard Pro</Menu><Geometry><Size><Height>820</Height><Width>680</Width></Size></Geometry></UI></DispatchInfo></Extension></DispatchInfoList>
 </ExtensionManifest>

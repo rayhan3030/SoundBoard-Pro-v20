@@ -1,953 +1,661 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SoundBoard Pro</title>
-    <script src="js/CSInterface.js"></script>
-    <style>
-        * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
-        body {
-            background-color: #1a1a1a;
-            color: #ddd;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            font-size: 13px;
-            font-weight: 500;
-            overflow: hidden;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: #1a1a1a; }
-        ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #666; }
-
-        .top-bar {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 8px;
-            background: #252525;
-            border-bottom: 1px solid #333;
-        }
-
-        .btn {
-            background: #007acc;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .btn:hover { background: #0062a3; }
-        
-        .btn-tab {
-            background: #333;
-            color: #ccc;
-            border: 1px solid #444;
-            padding: 4px 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .btn-tab.active { background: #444; color: #fff; border-color: #555; }
-
-        .search-input {
-            flex: 1;
-            background: #111;
-            border: 1px solid #3e3e3e;
-            color: #fff;
-            padding: 5px 8px;
-            border-radius: 3px;
-            outline: none;
-            font-size: 12px;
-        }
-        .search-input:focus { border-color: #007acc; }
-
-        .main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .sidebar {
-            width: 260px;
-            min-width: 150px;
-            max-width: 60%;
-            background: #1e1e1e;
-            border-right: 1px solid #2e2e2e;
-            overflow-y: auto;
-            padding: 4px;
-            font-size: 12px;
-        }
-
-        .resizer {
-            width: 4px;
-            cursor: col-resize;
-            background: #2b2b2b;
-            transition: background 0.2s;
-        }
-        .resizer:hover { background: #007acc; }
-
-        .content-area {
-            flex: 1;
-            background: #141414;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .tree-node {
-            padding: 4px 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-radius: 3px;
-            white-space: nowrap;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .tree-node:hover { background: #2a2a2a; }
-        .tree-node.active { background: #04395e; color: #fff; }
-        .tree-children { padding-left: 12px; display: none; }
-        .tree-children.open { display: block; }
-        .folder-count { color: #888; font-size: 11px; font-weight: normal; margin-left: 4px; }
-
-        .file-list { flex: 1; overflow-y: auto; padding: 4px; }
-        .file-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 6px 10px;
-            border-bottom: 1px solid #202020;
-            cursor: pointer;
-            border-radius: 2px;
-        }
-        .file-item:hover { background: #252525; }
-        .file-item.selected { background: #1c3b2b; color: #73f099; }
-        .file-info { display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; }
-        .file-name { text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-size: 13px; font-weight: 600; }
-        .duration-tag { color: #aaa; font-size: 12px; font-family: monospace; font-weight: 600; margin-right: 6px; }
-        .star-btn { cursor: pointer; color: #555; font-size: 14px; margin-right: 6px; }
-        .star-btn.active { color: #ffd700; }
-        .action-btns { display: flex; align-items: center; gap: 6px; }
-
-        .player-bar {
-            background: #181818;
-            border-top: 1px solid #2a2a2a;
-            padding: 6px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .waveform-container {
-            width: 100%; height: 42px; background: #0a0a0a; border: 1px solid #252525;
-            position: relative; cursor: pointer; border-radius: 3px; overflow: hidden;
-        }
-        canvas#waveformCanvas { width: 100%; height: 100%; display: block; }
-        .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background-color: #ff3b30; pointer-events: none; left: 0%; }
-
-        .controls-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 11px;
-            color: #aaa;
-            gap: 8px;
-            flex-wrap: nowrap;
-        }
-        .controls-group { display: flex; align-items: center; gap: 8px; }
-        .icon-btn { background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; }
-        .icon-btn:hover { color: #fff; }
-        .slider-control { display: flex; align-items: center; gap: 4px; }
-        input[type=range] { accent-color: #888; cursor: pointer; height: 12px; }
-        .time-display { font-family: monospace; font-size: 11px; color: #999; display: flex; gap: 4px; }
-    </style>
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--purple:#8a5cf5;--purple-hover:#a07cff;--bg:#1e1e1e;--bg2:#252525;--bg3:#2a2a2a;--border:#333}
+html,body{height:100%}
+body{background:var(--bg);color:#e8e8e8;font-family:'Inter','Sora',Segoe UI,sans-serif;font-size:12.5px;font-weight:600;overflow:hidden;display:flex;flex-direction:column;height:100vh;letter-spacing:.1px}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#5a5a5a;border-radius:10px}::-webkit-scrollbar-thumb:hover{background:#777}
+*{scrollbar-width:thin;scrollbar-color:#5a5a5a transparent}
+#topCompact{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.primary{background:var(--purple);border:none;color:#fff;padding:6px 14px;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px}
+.primary:hover{background:var(--purple-hover)}
+.tab{background:#333;border:1px solid #444;color:#aaa;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700}
+.tab.active{background:var(--purple);color:#fff;border-color:var(--purple);box-shadow:0 0 10px rgba(138,92,245,.35)}
+#searchCompact{flex:1;background:#1a1a1a;border:1px solid #444;color:#eee;padding:6px 10px;border-radius:8px;font-size:12.5px;font-weight:600}
+#searchCompact:focus{border-color:var(--purple);outline:none;box-shadow:0 0 0 2px rgba(138,92,245,.2)}
+#main{display:flex;flex:1;overflow:hidden}
+#left{width:38%;min-width:180px;max-width:65%;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#folderTree{flex:1;overflow-y:auto;padding:6px}
+#resizer{width:5px;background:#2f2f2f;cursor:ew-resize;transition:.15s;position:relative}
+#resizer:hover,#resizer.dragging{background:var(--purple)}
+#right{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+#fileHeader{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px;color:#999;font-weight:700}
+#fileList{flex:1;overflow-y:auto;padding:2px 0}
+.sitem{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #222;cursor:pointer;font-size:12.5px;font-weight:600;border-radius:4px;margin:1px 4px}
+.sitem:hover{background:#2a2a2a}.sitem.playing{background:#2b1f4a;color:#d8c6ff;border:1px solid rgba(138,92,245,.4)}
+.starBtn{background:transparent;border:none;cursor:pointer;font-size:15px;line-height:1;min-width:18px;transition:.15s;opacity:.7}
+.starBtn:hover{transform:scale(1.25);opacity:1}.starBtn.fav{color:#ffcc33;text-shadow:0 0 6px rgba(255,204,51,.6);opacity:1}.starBtn.notfav{color:rgba(255,255,255,.25)}
+.folderDel{opacity:0;background:transparent;border:none;cursor:pointer;color:var(--purple);font-size:12px;padding:0 4px;border-radius:4px;transition:.15s}
+.treeRow:hover .folderDel,.folderHeader:hover .folderDel{opacity:.9}.folderDel:hover{background:rgba(138,92,245,.15);color:var(--purple-hover);transform:scale(1.15)}
+.durBadge{font-size:10.5px;color:#bdbdbd;min-width:52px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;background:#1a1a1a;padding:2px 6px;border-radius:10px;border:1px solid #2e2e2e}
+#playerBar{background:var(--bg2);border-top:1px solid var(--border);padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+#waveWrap{position:relative;width:100%;height:86px;background:#111;border-radius:8px;overflow:hidden;border:1px solid #333;cursor:pointer}
+#waveCanvas{width:100%;height:100%;display:block}
+#playhead{position:absolute;top:0;bottom:0;width:2px;background:#ff4a4a;pointer-events:none;z-index:3;left:0;box-shadow:0 0 6px rgba(255,74,74,.8)}
+#playheadHandle{position:absolute;top:-1px;width:10px;height:10px;background:#ff4a4a;border-radius:50%;left:-4px;pointer-events:auto;cursor:ew-resize;box-shadow:0 0 8px rgba(255,74,74,.9);z-index:4}
+#mergedControls{display:flex;align-items:center;gap:10px;background:#1f1f1f;border:1px solid #2a2a2a;border-radius:8px;padding:6px 10px;flex-wrap:wrap}
+#mergedControls button.iconBtn{background:#2e2e2e;border:1px solid #3a3a3a;color:#eee;padding:4px 9px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;transition:.15s}
+#mergedControls button.iconBtn:hover{background:#3a3a3a;border-color:var(--purple)}
+#volSlider,#pitchSlider{width:76px;accent-color:var(--purple);height:4px;cursor:pointer}#pitchSlider{width:84px}
+#timeDisplay{margin-left:auto;text-align:right;font-family:monospace;font-size:10px;color:#aaa;line-height:1.2;min-width:70px}
+#powered{font-size:9.5px;color:#666;font-weight:600;white-space:nowrap}#powered span{color:var(--purple)}
+#btnAddBig{background:var(--purple);border:none;color:#fff;padding:5px 14px;border-radius:6px;font-weight:800;cursor:pointer;font-size:11px;margin-left:4px}
+#btnAddBig:hover{background:var(--purple-hover)}
+.divider{width:1px;height:18px;background:#333;margin:0 2px}#controlsGroup{display:flex;align-items:center;gap:8px}
+.ctx{position:fixed;z-index:9999;background:#2e2e2e;border:1px solid #555;border-radius:8px;padding:4px;min-width:200px;box-shadow:0 12px 30px rgba(0,0,0,.8)}
+.ctx button{width:100%;text-align:left;padding:6px 10px;background:transparent;border:none;color:#eee;font-size:12px;border-radius:5px;font-weight:600}.ctx button:hover{background:#3a3a3a}
+.folderHeader{display:flex;align-items:center;gap:4px;padding:5px;border-radius:6px}
+</style>
 </head>
 <body>
+<div id="topCompact">
+<button class="primary" id="btnOpen">📁 Add Main Folder</button>
+<button class="tab active" id="tabAll">All (0)</button>
+<button class="tab" id="tabFav">★ Fav (0)</button>
+<input id="searchCompact" placeholder="Global search all roots... Type anything">
+<button id="btnClose" style="background:#4a2222;color:#ff8a8a;border:1px solid #6a3333;padding:4px 10px;border-radius:6px;cursor:pointer;font-weight:700;">✕</button>
+</div>
+<div id="main">
+<div id="left">
+<div style="display:flex;justify-content:space-between;padding:6px 8px;font-size:10px;color:#777;font-weight:800;letter-spacing:.5px;"><span id="treeCount">0 roots</span><span>MULTI ROOT</span></div>
+<div id="folderTree"></div>
+</div>
+<div id="resizer"></div>
+<div id="right">
+<div id="fileHeader"><span id="fileCount">0 files</span><span id="folderNameLabel" style="color:var(--purple);margin-left:8px;"></span><span id="searchScope" style="margin-left:auto;color:var(--purple);font-size:10px;"></span></div>
+<div id="fileList"></div>
+</div>
+</div>
+<div id="playerBar">
+<div id="waveWrap"><canvas id="waveCanvas"></canvas><div id="playhead"><div id="playheadHandle"></div></div></div>
+<div id="mergedControls">
+<button class="iconBtn" id="btnRewind" title="Rewind">↺</button>
+<button class="iconBtn" id="btnPlay" title="Play/Pause (Space)">▶</button>
+<button class="iconBtn" id="btnMute" title="Mute">🔊</button>
+<input id="volSlider" type="range" min="0" max="1" step="0.01" value="0.9">
+<div id="timeDisplay"><div id="timeCur">00:00:00:00</div><div id="timeDur">00:00:00:00</div></div>
+<div class="divider"></div>
+<div id="controlsGroup">
+<span style="font-size:11px;">Pitch:</span><input id="pitchSlider" type="range" min="-12" max="12" step="1" value="0"><span id="pitchVal" style="min-width:14px;">0</span>
+<button id="pitchReset" style="background:#2e2e2e;border:1px solid #444;padding:2px 8px;border-radius:4px;color:var(--purple);font-size:10px;font-weight:800;cursor:pointer;">Reset</button>
+<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;"><input id="reverseCheck" type="checkbox"> Reverse</label>
+</div>
+<div id="powered" style="margin-left:auto;"><span>Rayhan3030</span></div>
+</div>
+</div>
+<div id="ctxMenu" class="ctx" style="display:none;">
+<button id="ctxFav">★ Toggle Favorite</button>
+<button id="ctxHide">🚫 Hide from Plugin (Not Disk)</button>
+<button id="ctxPlay">▶ Play</button>
+<button id="ctxCancel">✕ Cancel</button>
+</div>
+<script src="./js/CSInterface.js"></script>
+<script>
+const folderTree=document.getElementById('folderTree'), fileList=document.getElementById('fileList'), searchEl=document.getElementById('searchCompact');
+const tabAll=document.getElementById('tabAll'), tabFav=document.getElementById('tabFav');
+const waveCanvas=document.getElementById('waveCanvas'), waveWrap=document.getElementById('waveWrap'), playhead=document.getElementById('playhead'), btnPlay=document.getElementById('btnPlay');
+const timeCur=document.getElementById('timeCur'), timeDur=document.getElementById('timeDur'), pitchSlider=document.getElementById('pitchSlider'), pitchVal=document.getElementById('pitchVal'), reverseCheck=document.getElementById('reverseCheck'), volSlider=document.getElementById('volSlider');
 
-    <div class="top-bar">
-        <button class="btn" id="btnAddRoot">📁 Add Main Folder</button>
-        <button class="btn-tab active" id="btnTabAll">All</button>
-        <button class="btn-tab" id="btnTabFav">★ Fav</button>
-        <button class="btn-tab" id="btnTabTrash">🗑 Trash Bin</button>
-        <input type="text" class="search-input" id="searchInput" placeholder="Global search all roots... Type anything">
-    </div>
+let treeRoots=[];
+let globalAllFiles=[]; // মেমোরিতে সব ফাইলের ফ্ল্যাট ক্যাশ (দ্রুত গ্লোবাল সার্চের জন্য)
+let currentRootId=null, currentFolderPath=null, currentTab='all', playingEl=null, currentObj=null, audioBuffer=null, pitch=0, isReversed=false, rafId=null;
+let audioCtx=null, sourceNode=null, gainNode=null, startTime=0, pausedAt=0, isDraggingHead=false, isPlaying=false, currentVolume=0.9;
+const playerAudio=new Audio(); playerAudio.volume=0.9;
+const exts=['.mp3','.wav','.m4a','.aac','.flac','.ogg','.wma','.aiff','.aif'];
+const cs=new CSInterface();
+let fs, pathNode; try{ if(typeof require!=='undefined'){ fs=require('fs'); pathNode=require('path'); } }catch{}
 
-    <input type="file" id="nativeFolderInput" webkitdirectory directory style="display:none;">
+// ইনফিনিট স্ক্রল ও ব্যাচ রেন্ডারিং ভেরিয়েবল
+const RENDER_BATCH_SIZE = 80;
+let activeFilteredFiles = [];
+let renderedCount = 0;
+let currentBaseFiles = [];
+let currentBaseLabel = '';
 
-    <div class="main-container" id="mainContainer">
-        <div class="sidebar" id="sidebar">
-            <div id="treeContainer"></div>
-        </div>
-        <div class="resizer" id="resizer"></div>
-        <div class="content-area">
-            <div class="file-list" id="fileList">
-                <div style="color:#666; padding:10px;">Select a folder or search sounds...</div>
-            </div>
-        </div>
-    </div>
+// মেটাডেটা ডিউরেশন কিউ (একসাথে ৫০০০ Audio তৈরি হওয়া আটকাতে)
+let metaQueue = [];
+let activeMetaWorkers = 0;
+const MAX_META_WORKERS = 2;
 
-    <div class="player-bar">
-        <div class="waveform-container" id="waveformContainer">
-            <canvas id="waveformCanvas"></canvas>
-            <div class="playhead" id="playhead"></div>
-        </div>
+function enqueueMetadata(obj, badgeEl) {
+  if (obj.durationSec) {
+    badgeEl.innerText = fmtDur(obj.durationSec);
+    return;
+  }
+  metaQueue.push({ obj, badgeEl });
+  processMetaQueue();
+}
 
-        <div class="controls-row">
-            <div class="controls-group">
-                <button class="icon-btn" id="btnRestart">↺</button>
-                <button class="icon-btn" id="btnPlayPause">▶</button>
-                <div class="slider-control">
-                    <span>🔊</span>
-                    <input type="range" id="volSlider" min="0" max="1" step="0.01" value="0.8" style="width: 70px;">
-                </div>
-                <div class="time-display">
-                    <span id="currentTime">00:00:00:00</span> /
-                    <span id="totalTime">00:00:00:00</span>
-                </div>
-            </div>
+function processMetaQueue() {
+  while (activeMetaWorkers < MAX_META_WORKERS && metaQueue.length > 0) {
+    const item = metaQueue.shift();
+    if (item.obj.durationSec) {
+      if (item.badgeEl) item.badgeEl.innerText = fmtDur(item.obj.durationSec);
+      continue;
+    }
+    activeMetaWorkers++;
+    const tmp = new Audio();
+    tmp.preload = 'metadata';
+    const cleanup = () => {
+      tmp.onloadedmetadata = null;
+      tmp.onerror = null;
+      tmp.src = '';
+      activeMetaWorkers--;
+      processMetaQueue();
+    };
+    tmp.onloadedmetadata = () => {
+      item.obj.durationSec = tmp.duration;
+      if (item.badgeEl) item.badgeEl.innerText = fmtDur(tmp.duration);
+      cleanup();
+    };
+    tmp.onerror = cleanup;
+    tmp.src = item.obj.url;
+  }
+}
 
-            <div class="controls-group">
-                <div>
-                    <label style="cursor:pointer;"><input type="checkbox" id="chkReverse"> Reverse</label>
-                </div>
-                <button class="btn" id="btnAddToTimeline" style="padding: 4px 14px;">Add</button>
-            </div>
-        </div>
-    </div>
+function fmtTime(s){ if(!isFinite(s)||s<0) s=0; const ms=Math.floor((s%1)*100), sec=Math.floor(s%60), m=Math.floor((s/60)%60), h=Math.floor(s/3600); return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')+':'+String(ms).padStart(2,'0'); }
+function fmtDur(s){ if(!isFinite(s)||s<=0) return '--:--'; if(s<60) return s.toFixed(1)+'s'; const m=Math.floor(s/60), sec=Math.floor(s%60); return m+'m '+sec+'s'; }
+function ensureCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(!gainNode){ gainNode=audioCtx.createGain(); gainNode.gain.value=currentVolume; gainNode.connect(audioCtx.destination); } if(audioCtx.state==='suspended') audioCtx.resume(); return audioCtx; }
+function isAudioFile(name){ const low=name.toLowerCase(); return exts.some(e=>low.endsWith(e)); }
 
-    <audio id="audioEngine" style="display:none;"></audio>
+let expandedNodes=new Set();
+try{ const saved=localStorage.getItem('sb_expanded_v15'); if(saved) expandedNodes=new Set(JSON.parse(saved)); }catch{}
+function saveExpanded(){ localStorage.setItem('sb_expanded_v15', JSON.stringify(Array.from(expandedNodes))); }
 
-    <script>
-        const csInterface = new CSInterface();
-        
-        let fs, path, os;
-        try {
-            fs = require('fs');
-            path = require('path');
-            os = require('os');
-        } catch(e) {
-            if (window.cep && window.cep.node) {
-                fs = window.cep.node.require('fs');
-                path = window.cep.node.require('path');
-                os = window.cep.node.require('os');
-            }
+// ফেভারিট ক্যাশ (Set ব্যবহার করে O(1) লুকআপ)
+let favSet = new Set();
+try{ const f=JSON.parse(localStorage.getItem('sb_fav')||'[]'); favSet=new Set(f); }catch{}
+function getFavs(){ return Array.from(favSet); }
+function toggleFav(fullPath){
+  if(favSet.has(fullPath)) favSet.delete(fullPath);
+  else favSet.add(fullPath);
+  localStorage.setItem('sb_fav', JSON.stringify(Array.from(favSet)));
+  tabFav.innerText=`★ Fav (${favSet.size})`;
+}
+
+// গ্লোবাল ফাইল ক্যাশ রিবিল্ড করা
+function rebuildGlobalCache(){
+  globalAllFiles=[];
+  treeRoots.forEach(r=>{
+    if(r.tree && r.tree.allFiles) globalAllFiles.push(...r.tree.allFiles);
+  });
+}
+
+function loadRoots(){
+  try{
+    const raw=localStorage.getItem('sb_roots_v15');
+    if(raw){
+      const arr=JSON.parse(raw);
+      arr.forEach(r=>{
+        if(fs && fs.existsSync(r.path)){
+          const tree=scanRealFolder(r.path, new Set(r.hidden||[]));
+          if(tree) treeRoots.push({id:r.id, path:r.path, name:r.name, tree:tree, hidden:new Set(r.hidden||[])});
         }
+      });
+      rebuildGlobalCache();
+    }
+  }catch(e){}
+}
 
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function saveRoots(){
+  const toSave=treeRoots.map(r=>({id:r.id, path:r.path, name:r.name, hidden:Array.from(r.hidden)}));
+  localStorage.setItem('sb_roots_v15', JSON.stringify(toSave));
+}
 
-        let rootFolders = JSON.parse(localStorage.getItem('sbp_rootFolders')) || [];
-        let favoritesMap = JSON.parse(localStorage.getItem('sbp_favoritesMap')) || {};
-        let trashList = JSON.parse(localStorage.getItem('sbp_trashList')) || [];
-
-        let currentActivePath = '';
-        let currentTab = 'ALL';
-        let isDraggingPlayhead = false;
-        let animationFrameId = null;
-        let activeAudioBuffer = null;
-        let currentBufferSource = null;
-        let isPluginFocused = false;
-        let playbackStartTime = 0;
-        let currentOffset = 0;
-        let isPlayingWebAudio = false;
-        const durationCache = {};
-
-        const audioEngine = document.getElementById('audioEngine');
-        const playPauseBtn = document.getElementById('btnPlayPause');
-        const volSlider = document.getElementById('volSlider');
-        const chkReverse = document.getElementById('chkReverse');
-        const waveformContainer = document.getElementById('waveformContainer');
-        const playhead = document.getElementById('playhead');
-        const currentTimeEl = document.getElementById('currentTime');
-        const totalTimeEl = document.getElementById('totalTime');
-        const canvas = document.getElementById('waveformCanvas');
-        const ctx = canvas.getContext('2d');
-        const fileListEl = document.getElementById('fileList');
-        const treeContainer = document.getElementById('treeContainer');
-
-        function saveStateToStorage() {
-            localStorage.setItem('sbp_rootFolders', JSON.stringify(rootFolders));
-            localStorage.setItem('sbp_favoritesMap', JSON.stringify(favoritesMap));
-            localStorage.setItem('sbp_trashList', JSON.stringify(trashList));
+// অপটিমাইজড ফোল্ডার স্ক্যানার (একবার স্ক্যান করেই lowerName এবং allFiles ক্যাশ করে রাখে)
+function scanRealFolder(rootPath, hiddenSet){
+  hiddenSet=hiddenSet||new Set();
+  try{ if(!fs) fs=require('fs'); if(!pathNode) pathNode=require('path'); }catch{}
+  function walk(dir, depth){
+    if(hiddenSet.has(dir)) return null;
+    let stats; try{ stats=fs.statSync(dir); }catch{ return null; }
+    if(!stats.isDirectory()) return null;
+    const dirName = pathNode.basename(dir);
+    const node={name:dirName, path:dir, fullPath:dir, children:[], files:[], allFiles:[], totalCount:0, depth:depth};
+    let entries; try{ entries=fs.readdirSync(dir, {withFileTypes:true}); }catch{ return node; }
+    for(const ent of entries){
+      const full=pathNode.join(dir, ent.name);
+      if(hiddenSet.has(full)) continue;
+      if(ent.isDirectory()){
+        if(ent.name.startsWith('.')) continue;
+        const child=walk(full, depth+1);
+        if(child){
+          node.children.push(child);
+          node.allFiles.push(...child.allFiles);
         }
-
-        window.addEventListener('focus', () => { isPluginFocused = true; });
-        window.addEventListener('blur', () => { isPluginFocused = false; });
-        document.body.addEventListener('click', () => { isPluginFocused = true; });
-
-        window.addEventListener('keydown', (e) => {
-            if (!isPluginFocused) return;
-            if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
-
-            if (e.code === 'Space') {
-                e.preventDefault();
-                togglePlayPause();
-            } else if (e.code === 'ArrowLeft') {
-                e.preventDefault();
-                stepAudio(-0.002);
-            } else if (e.code === 'ArrowRight') {
-                e.preventDefault();
-                stepAudio(0.002);
-            }
-        });
-
-        function stepAudio(offset) {
-            if (!audioEngine.duration && !activeAudioBuffer) return;
-            if (isPlayingWebAudio) {
-                currentOffset = Math.max(0, Math.min(activeAudioBuffer.duration, currentOffset + offset));
-                playWebAudioBuffer(currentOffset);
-            } else {
-                audioEngine.currentTime = Math.max(0, Math.min(audioEngine.duration, audioEngine.currentTime + offset));
-                updatePlayheadUI();
-            }
+      } else {
+        if(isAudioFile(ent.name)){
+          const fileObj = {
+            name: ent.name,
+            displayName: ent.name.replace(/\.[^/.]+$/,''),
+            lowerName: ent.name.toLowerCase(), // সার্চের সময় বারবার toLowerCase() করতে হবে না
+            path: full,
+            fullPath: full,
+            url: 'file:///'+full.replace(/\\/g,'/'),
+            dirPath: dir,
+            folderShort: dirName
+          };
+          node.files.push(fileObj);
+          node.allFiles.push(fileObj);
         }
+      }
+    }
+    node.totalCount = node.allFiles.length;
+    return node;
+  }
+  return walk(rootPath, 0);
+}
 
-        function togglePlayPause() {
-            if (!currentActivePath) return;
+function collectFilesRecursive(node, includeSub=true){
+  if(!node) return [];
+  return includeSub ? (node.allFiles || []) : (node.files || []);
+}
 
-            if (isPlayingWebAudio) {
-                stopWebAudio();
-                playPauseBtn.innerText = '▶';
-            } else if (!audioEngine.paused) {
-                audioEngine.pause();
-                playPauseBtn.innerText = '▶';
-            } else {
-                if (chkReverse.checked) {
-                    playWebAudioBuffer(currentOffset);
-                } else {
-                    audioEngine.play();
-                    startSmoothPlayheadSync();
-                }
-                playPauseBtn.innerText = '⏸';
-            }
-        }
+function findNodeByPath(searchPath){
+  for(const root of treeRoots){
+    if(searchPath===root.path) return root.tree;
+    if(searchPath.startsWith(root.path)){
+      const res=findInTree(root.tree, searchPath);
+      if(res) return res;
+    }
+  }
+  return null;
+}
 
-        chkReverse.addEventListener('change', () => {
-            if (currentActivePath) {
-                playAudio(currentActivePath, null, 0);
-            }
-        });
+function findInTree(node, target){
+  if(!node) return null;
+  if(node.path===target) return node;
+  for(const ch of node.children){
+    const r=findInTree(ch, target);
+    if(r) return r;
+  }
+  return null;
+}
 
-        const sidebar = document.getElementById('sidebar');
-        const resizer = document.getElementById('resizer');
-        let isResizing = false;
+function getRootForPath(p){
+  for(const r of treeRoots){
+    if(p===r.path || (pathNode && p.startsWith(r.path+pathNode.sep)) || p.startsWith(r.path+'/')) return r;
+  }
+  return null;
+}
 
-        resizer.addEventListener('mousedown', () => { isResizing = true; });
-        window.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-            const newWidth = e.clientX;
-            if (newWidth > 120 && newWidth < window.innerWidth * 0.7) {
-                sidebar.style.width = newWidth + 'px';
-            }
-        });
-        window.addEventListener('mouseup', () => { isResizing = false; });
+function renderTree(){
+  folderTree.innerHTML='';
+  document.getElementById('treeCount').innerText=treeRoots.length+' roots';
+  const frag = document.createDocumentFragment();
 
-        document.getElementById('btnAddRoot').addEventListener('click', () => {
-            try {
-                if (window.cep && window.cep.fs && window.cep.fs.showOpenDialog) {
-                    const res = window.cep.fs.showOpenDialog(false, true, 'Select Main Folder', '', []);
-                    if (res && res.data && res.data.length > 0) {
-                        addRootFolder(res.data[0]);
-                        return;
-                    }
-                }
-            } catch(e) {}
-            document.getElementById('nativeFolderInput').click();
-        });
+  treeRoots.forEach(root=>{
+    const rootDiv=document.createElement('div');
+    rootDiv.style.marginBottom='8px'; rootDiv.style.borderBottom='1px solid #222'; rootDiv.style.paddingBottom='4px';
+    const isExp = expandedNodes.has(root.path) || !localStorage.getItem('sb_expanded_v15');
+    const header=document.createElement('div'); header.className='folderHeader treeRow';
+    header.style.background=root.id===currentRootId?'#2b1f4a':'#1a1a1a'; header.style.cursor='pointer';
+    header.innerHTML=`<span class="arrow" style="color:#888;width:14px;text-align:center;cursor:pointer;">${isExp?'▼':'▶'}</span><span style="color:var(--purple);">📁</span><span style="font-weight:700;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${root.name}</span><span style="font-size:10px;color:#888;">${root.tree.totalCount}</span><button class="folderDel delRoot" title="Remove root (shadow delete)" style="font-size:13px;">✕</button>`;
 
-        document.getElementById('nativeFolderInput').addEventListener('change', (e) => {
-            if (e.target.files && e.target.files.length > 0) {
-                const firstFile = e.target.files[0];
-                if (firstFile.path && path) {
-                    addRootFolder(path.dirname(firstFile.path));
-                }
-            }
-        });
+    header.querySelector('.arrow').onclick=(e)=>{
+      e.stopPropagation();
+      if(expandedNodes.has(root.path)) expandedNodes.delete(root.path); else expandedNodes.add(root.path);
+      saveExpanded(); renderTree();
+    };
+    header.onclick=(e)=>{
+      if(e.target.classList.contains('delRoot')||e.target.classList.contains('arrow')||e.target.classList.contains('folderDel')) return;
+      currentRootId=root.id; currentFolderPath=root.path; searchEl.value='';
+      document.getElementById('searchScope').innerText='';
+      const files=root.tree.allFiles;
+      renderFileList(files, `All in ${root.name} (${files.length})`);
+      renderTree();
+    };
+    header.querySelector('.delRoot').onclick=(e)=>{
+      e.stopPropagation();
+      if(confirm(`Remove ${root.name} from plugin? Disk safe.`)){
+        treeRoots=treeRoots.filter(r=>r.id!==root.id);
+        rebuildGlobalCache();
+        if(currentRootId===root.id){ currentRootId=null; currentFolderPath=null; fileList.innerHTML=''; }
+        saveRoots(); renderTree();
+      }
+    };
+    rootDiv.appendChild(header);
+    if(!isExp) { frag.appendChild(rootDiv); return; }
 
-        function addRootFolder(folderPath) {
-            if (!rootFolders.includes(folderPath)) {
-                rootFolders.push(folderPath);
-                saveStateToStorage();
-                renderTree();
-            }
-        }
+    const childContainer=document.createElement('div'); childContainer.style.paddingLeft='8px';
+    function renderNode(node, container){
+      for(const child of node.children){
+        const childExp = expandedNodes.has(child.path);
+        const row=document.createElement('div'); row.className='treeRow';
+        row.style.cssText=`display:flex;align-items:center;gap:4px;padding:3px 4px;cursor:pointer;font-size:11.5px;border-radius:4px;background:${currentFolderPath===child.path?'#2b1f4a':'transparent'}`;
+        const hasChildren=child.children.length>0;
+        row.innerHTML=`<span class="arrow" style="width:12px;text-align:center;color:#666;cursor:pointer;">${hasChildren?(childExp?'▼':'▶'):'─'}</span><span>📁</span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#ccc;">${child.name}</span><span style="font-size:9px;color:var(--purple);min-width:18px;text-align:right;">${child.totalCount}</span><button class="folderDel" title="Shadow delete folder" style="font-size:11px;">✕</button>`;
 
-        document.getElementById('btnTabAll').addEventListener('click', (e) => { switchTab('ALL', e.target); });
-        document.getElementById('btnTabFav').addEventListener('click', (e) => { switchTab('FAV', e.target); });
-        document.getElementById('btnTabTrash').addEventListener('click', (e) => { switchTab('TRASH', e.target); });
-
-        function switchTab(tab, el) {
-            currentTab = tab;
-            document.querySelectorAll('.btn-tab').forEach(b => b.classList.remove('active'));
-            el.classList.add('active');
-
-            if (tab === 'FAV') renderFavorites();
-            else if (tab === 'TRASH') renderTrash();
-            else renderTree();
-        }
-
-        function getFastAudioDuration(filePath, durationSpan) {
-            if (durationCache[filePath]) {
-                durationSpan.innerText = durationCache[filePath];
-                return;
-            }
-
-            try {
-                if (!fs) return;
-                const stat = fs.statSync(filePath);
-                const fileSize = stat.size;
-                let ext = path ? path.extname(filePath).toLowerCase() : '.wav';
-                let estimatedSeconds = 0;
-
-                if (ext === '.wav') {
-                    estimatedSeconds = fileSize / (44100 * 2 * 2);
-                } else if (ext === '.mp3') {
-                    estimatedSeconds = (fileSize * 8) / 256000;
-                } else {
-                    estimatedSeconds = (fileSize * 8) / 192000;
-                }
-
-                let formatted = formatShortTime(estimatedSeconds);
-                durationCache[filePath] = formatted;
-                durationSpan.innerText = formatted;
-
-                fs.readFile(filePath, (err, data) => {
-                    if (err) return;
-                    const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-                    audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
-                        const exactTime = formatShortTime(buffer.duration);
-                        durationCache[filePath] = exactTime;
-                        durationSpan.innerText = exactTime;
-                    }, () => {});
-                });
-            } catch(e) {
-                durationSpan.innerText = "00:01";
-            }
-        }
-
-        function formatShortTime(sec) {
-            if (isNaN(sec) || !isFinite(sec) || sec <= 0) return "00:01";
-            const m = Math.floor(sec / 60);
-            const s = Math.floor(sec % 60);
-            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-        }
-
-        function getFilesAndCountRecursive(dirPath) {
-            let files = [];
-            try {
-                if (!fs || !path) return files;
-                const items = fs.readdirSync(dirPath);
-                items.forEach(item => {
-                    const full = path.join(dirPath, item);
-                    if (trashList.includes(full)) return;
-                    
-                    const stat = fs.statSync(full);
-                    if (stat.isDirectory()) {
-                        files = files.concat(getFilesAndCountRecursive(full));
-                    } else if (/\.(mp3|wav|ogg|aac|m4a)$/i.test(item)) {
-                        files.push({ name: item, path: full });
-                    }
-                });
-            } catch(e) {}
-            return files;
-        }
-
-        function renderTree() {
-            treeContainer.innerHTML = '';
-            rootFolders.forEach(rootPath => {
-                if (fs && fs.existsSync(rootPath)) {
-                    const node = createTreeNode(rootPath, true);
-                    treeContainer.appendChild(node);
-                }
-            });
-        }
-
-        function createTreeNode(dirPath, isRoot = false) {
-            const container = document.createElement('div');
-            const files = getFilesAndCountRecursive(dirPath);
-            const folderName = path ? path.basename(dirPath) : 'Folder';
-
-            const row = document.createElement('div');
-            row.className = 'tree-node';
-            row.innerHTML = `
-                <span>📁 ${folderName} <span class="folder-count">(${files.length})</span></span>
-                <span class="remove-folder-btn" style="color:#666; font-size:10px;">✕</span>
-            `;
-
-            const childrenContainer = document.createElement('div');
-            childrenContainer.className = 'tree-children';
-
-            row.onclick = (e) => {
-                e.stopPropagation();
-                document.querySelectorAll('.tree-node').forEach(n => n.classList.remove('active'));
-                row.classList.add('active');
-                childrenContainer.classList.toggle('open');
-                renderFileList(files);
-            };
-
-            row.querySelector('.remove-folder-btn').onclick = (e) => {
-                e.stopPropagation();
-                trashList.push(dirPath);
-                if (isRoot) rootFolders = rootFolders.filter(r => r !== dirPath);
-                saveStateToStorage();
-                renderTree();
-            };
-
-            container.appendChild(row);
-
-            try {
-                if (fs && path) {
-                    const subItems = fs.readdirSync(dirPath);
-                    subItems.forEach(sub => {
-                        const subPath = path.join(dirPath, sub);
-                        if (!trashList.includes(subPath) && fs.statSync(subPath).isDirectory()) {
-                            childrenContainer.appendChild(createTreeNode(subPath));
-                        }
-                    });
-                }
-            } catch(e) {}
-
-            container.appendChild(childrenContainer);
-            return container;
-        }
-
-        function renderFileList(fileArray) {
-            fileListEl.innerHTML = '';
-            fileArray.forEach(fileObj => {
-                const isFav = !!favoritesMap[fileObj.path];
-                const displayName = isFav && favoritesMap[fileObj.path].remark ? favoritesMap[fileObj.path].remark : fileObj.name;
-
-                const card = document.createElement('div');
-                card.className = 'file-item';
-                card.draggable = true;
-
-                card.innerHTML = `
-                    <div class="file-info">
-                        <span class="star-btn ${isFav ? 'active' : ''}">★</span>
-                        <span class="file-name">${displayName}</span>
-                    </div>
-                    <div class="action-btns">
-                        <span class="duration-tag">00:00</span>
-                        <button class="btn btn-add" style="padding:2px 8px;">Add</button>
-                        <span class="trash-btn" style="cursor:pointer; color:#777; margin-left:4px;">🗑</span>
-                    </div>
-                `;
-
-                const durationTag = card.querySelector('.duration-tag');
-                getFastAudioDuration(fileObj.path, durationTag);
-
-                card.ondragstart = (e) => {
-                    e.preventDefault();
-                    if (window.cep && window.cep.fs) {
-                        window.cep.fs.startDrag([fileObj.path]);
-                    }
-                };
-
-                card.querySelector('.star-btn').onclick = (e) => {
-                    e.stopPropagation();
-                    if (favoritesMap[fileObj.path]) delete favoritesMap[fileObj.path];
-                    else favoritesMap[fileObj.path] = { remark: fileObj.name };
-                    saveStateToStorage();
-                    if (currentTab === 'FAV') renderFavorites();
-                    else renderFileList(fileArray);
-                };
-
-                card.onclick = () => playAudio(fileObj.path, card);
-
-                card.querySelector('.btn-add').onclick = (e) => {
-                    e.stopPropagation();
-                    addSoundToTimeline(fileObj.path);
-                };
-
-                card.querySelector('.trash-btn').onclick = (e) => {
-                    e.stopPropagation();
-                    trashList.push(fileObj.path);
-                    saveStateToStorage();
-                    renderFileList(fileArray.filter(f => f.path !== fileObj.path));
-                };
-
-                fileListEl.appendChild(card);
-            });
-        }
-
-        function renderFavorites() {
-            fileListEl.innerHTML = '';
-            Object.keys(favoritesMap).forEach(filePath => {
-                if (trashList.includes(filePath)) return;
-                const fileName = path ? path.basename(filePath) : 'Sound';
-                const currentRemark = favoritesMap[filePath].remark || fileName;
-
-                const card = document.createElement('div');
-                card.className = 'file-item';
-                card.innerHTML = `
-                    <div class="file-info">
-                        <span class="star-btn active">★</span>
-                        <input type="text" value="${currentRemark}" class="search-input remark-input" style="width:140px; padding:2px;">
-                    </div>
-                    <div class="action-btns">
-                        <button class="btn btn-add">Add</button>
-                        <span class="remove-fav" style="cursor:pointer; color:#a33;">✕</span>
-                    </div>
-                `;
-
-                card.querySelector('.remark-input').onchange = (e) => {
-                    favoritesMap[filePath].remark = e.target.value;
-                    saveStateToStorage();
-                };
-
-                card.querySelector('.remove-fav').onclick = () => {
-                    delete favoritesMap[filePath];
-                    saveStateToStorage();
-                    renderFavorites();
-                };
-
-                card.onclick = () => playAudio(filePath, card);
-                card.querySelector('.btn-add').onclick = (e) => {
-                    e.stopPropagation();
-                    addSoundToTimeline(filePath);
-                };
-
-                fileListEl.appendChild(card);
-            });
-        }
-
-        function renderTrash() {
-            fileListEl.innerHTML = '';
-            trashList.forEach(itemPath => {
-                const card = document.createElement('div');
-                card.className = 'file-item';
-                card.innerHTML = `
-                    <div class="file-info">
-                        <span class="file-name">${path ? path.basename(itemPath) : itemPath}</span>
-                    </div>
-                    <button class="btn btn-restore" style="background:#28a745;">Restore</button>
-                `;
-
-                card.querySelector('.btn-restore').onclick = () => {
-                    trashList = trashList.filter(p => p !== itemPath);
-                    saveStateToStorage();
-                    renderTrash();
-                };
-
-                fileListEl.appendChild(card);
-            });
-        }
-
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            if (!query) return;
-
-            let searchResults = [];
-            rootFolders.forEach(root => {
-                const allFiles = getFilesAndCountRecursive(root);
-                searchResults = searchResults.concat(allFiles.filter(f => f.name.toLowerCase().includes(query)));
-            });
-            renderFileList(searchResults);
-        });
-
-        function bufferToWav(buffer) {
-            let numChannels = buffer.numberOfChannels;
-            let sampleRate = buffer.sampleRate;
-            let format = 1;
-            let bitDepth = 16;
-            
-            let result;
-            if (numChannels === 2) {
-                let left = buffer.getChannelData(0);
-                let right = buffer.getChannelData(1);
-                result = new Float32Array(left.length + right.length);
-                for (let i = 0; i < left.length; i++) {
-                    result[i * 2] = left[i];
-                    result[i * 2 + 1] = right[i];
-                }
-            } else {
-                result = buffer.getChannelData(0);
-            }
-
-            let bytesPerSample = bitDepth / 8;
-            let blockAlign = numChannels * bytesPerSample;
-            let bufferLength = result.length * bytesPerSample;
-            let arrayBuffer = new ArrayBuffer(44 + bufferLength);
-            let view = new DataView(arrayBuffer);
-
-            writeString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + bufferLength, true);
-            writeString(view, 8, 'WAVE');
-            writeString(view, 12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, format, true);
-            view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * blockAlign, true);
-            view.setUint16(32, blockAlign, true);
-            view.setUint16(34, bitDepth, true);
-            writeString(view, 36, 'data');
-            view.setUint32(40, bufferLength, true);
-
-            return Buffer.from(new Uint8Array(arrayBuffer));
-        }
-
-        function writeString(view, offset, string) {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
-            }
-        }
-
-        // Safe JSON Escaped Dispatcher to Prevent Backslash String Mismatch
-        function sendToPremiere(targetPath) {
-            var scriptCall = 'importSFXToTimeline(' + JSON.stringify(targetPath) + ')';
-            csInterface.evalScript(scriptCall, function(res) {
-                console.log("ExtendScript Response:", res);
-            });
-        }
-
-        function addSoundToTimeline(filePath) {
-            if (!filePath) return;
-
-            if (chkReverse.checked && fs) {
-                fs.readFile(filePath, (err, data) => {
-                    if (err) return;
-                    const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-                    audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
-                        const reversedBuffer = audioCtx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
-                        for (let c = 0; c < buffer.numberOfChannels; c++) {
-                            const srcData = buffer.getChannelData(c);
-                            const destData = reversedBuffer.getChannelData(c);
-                            for (let i = 0; i < buffer.length; i++) {
-                                destData[i] = srcData[buffer.length - 1 - i];
-                            }
-                        }
-
-                        const tempDir = os ? os.tmpdir() : '.';
-                        const baseName = path ? path.basename(filePath, path.extname(filePath)) : 'reversed';
-                        const tempPath = path ? path.join(tempDir, `${baseName}_reversed.wav`) : `${tempDir}/${baseName}_reversed.wav`;
-                        
-                        const wavNodeBuffer = bufferToWav(reversedBuffer);
-                        fs.writeFileSync(tempPath, wavNodeBuffer);
-
-                        sendToPremiere(tempPath);
-                    });
-                });
-            } else {
-                sendToPremiere(filePath);
-            }
-        }
-
-        document.getElementById('btnAddToTimeline').onclick = () => {
-            if (currentActivePath) addSoundToTimeline(currentActivePath);
+        const arrow=row.querySelector('.arrow');
+        if(hasChildren) arrow.onclick=(e)=>{
+          e.stopPropagation();
+          if(expandedNodes.has(child.path)) expandedNodes.delete(child.path); else expandedNodes.add(child.path);
+          saveExpanded(); renderTree();
         };
-
-        function stopWebAudio() {
-            if (currentBufferSource) {
-                try { currentBufferSource.stop(); } catch(e){}
-                currentBufferSource = null;
-            }
-            isPlayingWebAudio = false;
-        }
-
-        function playAudio(filePath, cardEl, startOffset = 0) {
-            document.querySelectorAll('.file-item').forEach(c => c.classList.remove('selected'));
-            if (cardEl) cardEl.classList.add('selected');
-
-            currentActivePath = filePath;
-            stopWebAudio();
-
-            if (!fs) {
-                audioEngine.src = filePath;
-                audioEngine.currentTime = startOffset;
-                audioEngine.play();
-                playPauseBtn.innerText = '⏸';
-                startSmoothPlayheadSync();
-                return;
-            }
-
-            fs.readFile(filePath, (err, data) => {
-                if (err) return;
-                const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-                audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
-                    if (chkReverse.checked) {
-                        const reversedBuffer = audioCtx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
-                        for (let c = 0; c < buffer.numberOfChannels; c++) {
-                            const srcData = buffer.getChannelData(c);
-                            const destData = reversedBuffer.getChannelData(c);
-                            for (let i = 0; i < buffer.length; i++) {
-                                destData[i] = srcData[buffer.length - 1 - i];
-                            }
-                        }
-                        activeAudioBuffer = reversedBuffer;
-                        drawRealGrayWaveform();
-                        totalTimeEl.innerText = formatTime(reversedBuffer.duration);
-                        playWebAudioBuffer(startOffset);
-                    } else {
-                        activeAudioBuffer = buffer;
-                        drawRealGrayWaveform();
-                        totalTimeEl.innerText = formatTime(buffer.duration);
-                        audioEngine.src = filePath;
-                        audioEngine.currentTime = startOffset;
-                        audioEngine.play();
-                        playPauseBtn.innerText = '⏸';
-                        startSmoothPlayheadSync();
-                    }
-                });
-            });
-        }
-
-        function playWebAudioBuffer(offset = 0) {
-            stopWebAudio();
-            if (!activeAudioBuffer) return;
-
-            currentBufferSource = audioCtx.createBufferSource();
-            currentBufferSource.buffer = activeAudioBuffer;
-            
-            const gainNode = audioCtx.createGain();
-            gainNode.gain.value = volSlider.value;
-            
-            currentBufferSource.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            playbackStartTime = audioCtx.currentTime - offset;
-            currentBufferSource.start(0, offset);
-            isPlayingWebAudio = true;
-            playPauseBtn.innerText = '⏸';
-
-            startSmoothPlayheadSync();
-        }
-
-        function drawRealGrayWaveform() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const mid = canvas.height / 2;
-
-            if (!activeAudioBuffer) {
-                ctx.strokeStyle = '#333';
-                ctx.beginPath();
-                ctx.moveTo(0, mid);
-                ctx.lineTo(canvas.width, mid);
-                ctx.stroke();
-                return;
-            }
-
-            const rawData = activeAudioBuffer.getChannelData(0);
-            const samples = canvas.width;
-            const blockSize = Math.floor(rawData.length / samples);
-
-            ctx.fillStyle = '#888';
-            for (let i = 0; i < samples; i++) {
-                let sum = 0;
-                for (let j = 0; j < blockSize; j++) {
-                    sum += Math.abs(rawData[i * blockSize + j] || 0);
-                }
-                let avg = sum / blockSize;
-                let barHeight = Math.max(2, avg * canvas.height * 2.5);
-                ctx.fillRect(i, mid - barHeight / 2, 1, barHeight);
-            }
-        }
-
-        function startSmoothPlayheadSync() {
-            cancelAnimationFrame(animationFrameId);
-            function update() {
-                if (!isDraggingPlayhead) {
-                    if (isPlayingWebAudio && activeAudioBuffer) {
-                        currentOffset = audioCtx.currentTime - playbackStartTime;
-                        if (currentOffset >= activeAudioBuffer.duration) {
-                            stopWebAudio();
-                            playPauseBtn.innerText = '▶';
-                            playhead.style.left = '0%';
-                            return;
-                        }
-                        const pct = (currentOffset / activeAudioBuffer.duration) * 100;
-                        playhead.style.left = pct + '%';
-                        currentTimeEl.innerText = formatTime(currentOffset);
-                    } else if (audioEngine.duration) {
-                        const pct = (audioEngine.currentTime / audioEngine.duration) * 100;
-                        playhead.style.left = pct + '%';
-                        currentTimeEl.innerText = formatTime(audioEngine.currentTime);
-                    }
-                }
-                if (isPlayingWebAudio || !audioEngine.paused) {
-                    animationFrameId = requestAnimationFrame(update);
-                }
-            }
-            animationFrameId = requestAnimationFrame(update);
-        }
-
-        function updatePlayheadUI() {
-            if (audioEngine.duration) {
-                const pct = (audioEngine.currentTime / audioEngine.duration) * 100;
-                playhead.style.left = pct + '%';
-                currentTimeEl.innerText = formatTime(audioEngine.currentTime);
-            }
-        }
-
-        function resizeCanvas() {
-            canvas.width = waveformContainer.clientWidth;
-            canvas.height = waveformContainer.clientHeight;
-            drawRealGrayWaveform();
-        }
-        window.addEventListener('resize', resizeCanvas);
-
-        function seek(e) {
-            const rect = waveformContainer.getBoundingClientRect();
-            let x = e.clientX - rect.left;
-            x = Math.max(0, Math.min(x, rect.width));
-            const percentage = x / rect.width;
-            playhead.style.left = (percentage * 100) + '%';
-
-            if (isPlayingWebAudio && activeAudioBuffer) {
-                const targetOffset = percentage * activeAudioBuffer.duration;
-                playWebAudioBuffer(targetOffset);
-            } else if (audioEngine.duration) {
-                audioEngine.currentTime = percentage * audioEngine.duration;
-                currentTimeEl.innerText = formatTime(audioEngine.duration * percentage);
-            }
-        }
-
-        waveformContainer.addEventListener('mousedown', (e) => { isDraggingPlayhead = true; seek(e); });
-        window.addEventListener('mousemove', (e) => { if (isDraggingPlayhead) seek(e); });
-        window.addEventListener('mouseup', () => { isResizing = false; isDraggingPlayhead = false; });
-
-        playPauseBtn.onclick = togglePlayPause;
-
-        document.getElementById('btnRestart').onclick = () => {
-            if (chkReverse.checked && activeAudioBuffer) {
-                playWebAudioBuffer(0);
-            } else if (audioEngine.src) {
-                audioEngine.currentTime = 0;
-                audioEngine.play();
-                playPauseBtn.innerText = '⏸';
-                startSmoothPlayheadSync();
-            }
+        row.onclick=(e)=>{
+          if(e.target.tagName==='BUTTON'||e.target.classList.contains('arrow')) return;
+          currentRootId=root.id; currentFolderPath=child.path; searchEl.value='';
+          document.getElementById('searchScope').innerText='';
+          const allFiles=child.allFiles;
+          renderFileList(allFiles, `${child.name} - All (${allFiles.length})`);
+          renderTree();
         };
-
-        volSlider.oninput = (e) => { audioEngine.volume = e.target.value; };
-
-        audioEngine.onloadedmetadata = () => {
-            totalTimeEl.innerText = formatTime(audioEngine.duration);
+        row.querySelector('.folderDel').onclick=(e)=>{
+          e.stopPropagation();
+          if(confirm(`Hide ${child.name} from plugin? Shadow delete.`)){
+            root.hidden.add(child.path); saveRoots();
+            root.tree=scanRealFolder(root.path, root.hidden);
+            rebuildGlobalCache(); renderTree();
+            if(currentFolderPath && currentFolderPath.startsWith(child.path)){
+              currentFolderPath=root.path;
+              renderFileList(root.tree.allFiles, `All in ${root.name}`);
+            }
+          }
         };
-
-        audioEngine.onended = () => {
-            playPauseBtn.innerText = '▶';
-            playhead.style.left = '0%';
-        };
-
-        function formatTime(sec) {
-            if (isNaN(sec)) return "00:00:00:00";
-            const date = new Date(sec * 1000);
-            const mm = String(date.getUTCMinutes()).padStart(2, '0');
-            const ss = String(date.getUTCSeconds()).padStart(2, '0');
-            const ms = String(Math.floor(date.getUTCMilliseconds() / 10)).padStart(2, '0');
-            return `00:${mm}:${ss}:${ms}`;
+        container.appendChild(row);
+        if(hasChildren && childExp){
+          const sub=document.createElement('div');
+          sub.style.paddingLeft='10px'; sub.style.borderLeft='1px dashed #2e2e2e';
+          container.appendChild(sub);
+          renderNode(child, sub);
         }
+      }
+    }
+    renderNode(root.tree, childContainer);
+    rootDiv.appendChild(childContainer);
+    frag.appendChild(rootDiv);
+  });
+  folderTree.appendChild(frag);
+}
 
-        renderTree();
-    </script>
+// ব্যাচ করে DOM এলিমেন্ট রেন্ডার করা (যাতে ৫০০০ ফাইল একসাথে ব্রাউজার হ্যাং না করে)
+function appendNextBatch(){
+  if(renderedCount >= activeFilteredFiles.length) return;
+  const nextSlice = activeFilteredFiles.slice(renderedCount, renderedCount + RENDER_BATCH_SIZE);
+  renderedCount += nextSlice.length;
+  const frag = document.createDocumentFragment();
+
+  nextSlice.forEach(obj=>{
+    const favItem = favSet.has(obj.fullPath);
+    const div=document.createElement('div');
+    div.className='sitem'+(favItem?' fav':'')+(currentObj===obj?' playing':'');
+    if(currentObj===obj) playingEl=div;
+    div.draggable=true;
+    const durText=obj.durationSec?fmtDur(obj.durationSec):'--:--';
+
+    div.innerHTML=`<button class="starBtn ${favItem?'fav':'notfav'}" title="${favItem?'Remove from Fav':'Add to Fav'}">${favItem?'★':'☆'}</button><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;">${obj.displayName}</span><span class="durBadge">${durText}</span><span style="font-size:9px;color:#666;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${obj.folderShort||''}</span>`;
+    div.title=`${obj.name} | ${durText} | ${obj.fullPath}`;
+
+    div.addEventListener('dragstart', e=>{
+      try{
+        const fileUrl='file:///'+obj.fullPath.replace(/\\/g,'/').replace(/ /g,'%20');
+        e.dataTransfer.setData('text/uri-list', fileUrl);
+        e.dataTransfer.setData('text/plain', obj.fullPath);
+        e.dataTransfer.effectAllowed='copy';
+      }catch{}
+    });
+
+    const star=div.querySelector('.starBtn');
+    star.onclick=(e)=>{
+      e.stopPropagation();
+      toggleFav(obj.fullPath);
+      const isNowFav = favSet.has(obj.fullPath);
+      if(currentTab==='fav' && !isNowFav){
+        div.remove();
+        return;
+      }
+      star.className = 'starBtn ' + (isNowFav ? 'fav' : 'notfav');
+      star.innerText = isNowFav ? '★' : '☆';
+      div.classList.toggle('fav', isNowFav);
+    };
+
+    div.onclick=()=>{ play(obj, div); };
+    div.ondblclick=()=>{ addToTimeline(obj); };
+
+    const addBtn=document.createElement('button');
+    addBtn.innerText='Add';
+    addBtn.style.cssText='background:var(--purple);border:none;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:800;cursor:pointer;';
+    addBtn.onclick=(e)=>{ e.stopPropagation(); addToTimeline(obj); };
+    div.appendChild(addBtn);
+
+    frag.appendChild(div);
+
+    // ডিউরেশন কিউতে পাঠানো (শুধু রেন্ডার হওয়া ৮০টি ফাইলের জন্য)
+    const badge = div.querySelector('.durBadge');
+    enqueueMetadata(obj, badge);
+  });
+
+  fileList.appendChild(frag);
+}
+
+// স্ক্রল করলে বাকি ফাইলগুলো অটো-লোড হবে
+fileList.addEventListener('scroll', ()=>{
+  if(fileList.scrollTop + fileList.clientHeight >= fileList.scrollHeight - 180){
+    appendNextBatch();
+  }
+});
+
+function renderFileList(files, label){
+  currentBaseFiles = files || [];
+  currentBaseLabel = label || '';
+  document.getElementById('folderNameLabel').innerText = currentBaseLabel;
+
+  metaQueue = []; // আগের পেন্ডিং মেটাডেটা রিকোয়েস্ট ক্লিয়ার করা
+  const q = searchEl.value.trim().toLowerCase();
+  let filtered;
+
+  if(q){
+    // প্রি-ক্যাশড globalAllFiles এবং lowerName ব্যবহার করে আল্ট্রা-ফাস্ট সার্চ
+    const sourcePool = currentTab === 'fav' ? globalAllFiles.filter(f => favSet.has(f.fullPath)) : globalAllFiles;
+    filtered = [];
+    for(let i = 0, len = sourcePool.length; i < len; i++){
+      if(sourcePool[i].lowerName.includes(q)){
+        filtered.push(sourcePool[i]);
+      }
+    }
+    document.getElementById('searchScope').innerText=`Global Search: ${filtered.length}/${sourcePool.length} across ${treeRoots.length} roots`;
+  } else {
+    filtered = currentBaseFiles;
+    document.getElementById('searchScope').innerText='';
+  }
+
+  document.getElementById('fileCount').innerText=filtered.length+' files';
+  tabAll.innerText=`All (${filtered.length})`;
+  tabFav.innerText=`★ Fav (${favSet.size})`;
+
+  activeFilteredFiles = filtered;
+  renderedCount = 0;
+  fileList.innerHTML = '';
+  fileList.scrollTop = 0;
+
+  appendNextBatch(); // শুরুতে প্রথম ৮০টি ফাইল তাৎক্ষণিক রেন্ডার করবে
+  window._currentFiles = filtered;
+}
+
+let originalBuffer=null;
+async function play(obj, el){
+ if(playingEl) playingEl.classList.remove('playing'); playingEl=el; if(el) el.classList.add('playing'); currentObj=obj; stopWebAudio(); playerAudio.pause(); pausedAt=0;
+ try{
+  let buf; if(obj.fullPath && fs){ const b=fs.readFileSync(obj.fullPath); buf=b.buffer.slice(b.byteOffset, b.byteOffset+b.byteLength); }else{ const r=await fetch(obj.url); buf=await r.arrayBuffer(); }
+  const ctx=ensureCtx(); const dec=await ctx.decodeAudioData(buf.slice(0)); originalBuffer=dec;
+  obj.durationSec = dec.duration;
+  if(el){ const badge=el.querySelector('.durBadge'); if(badge) badge.innerText=fmtDur(dec.duration); }
+  let toPlay=dec; if(isReversed){ const rev=ctx.createBuffer(dec.numberOfChannels, dec.length, dec.sampleRate); for(let ch=0;ch<dec.numberOfChannels;ch++){ const s=dec.getChannelData(ch), d=rev.getChannelData(ch); for(let i=0;i<s.length;i++) d[i]=s[s.length-1-i]; } toPlay=rev; }
+  audioBuffer=toPlay; drawWaveform(toPlay); playWebAudio(toPlay, 0);
+ }catch(e){ playerAudio.src=obj.url; playerAudio.playbackRate=Math.pow(2, pitch/12); playerAudio.volume=currentVolume; playerAudio.play(); isPlaying=true; btnPlay.innerText='⏸'; }
+}
+
+function drawWaveform(buffer){
+ const canvas=waveCanvas, ctx=canvas.getContext('2d'); const rect=waveWrap.getBoundingClientRect(); const dpr=window.devicePixelRatio||1;
+ canvas.width=rect.width*dpr; canvas.height=rect.height*dpr; canvas.style.width=rect.width+'px'; canvas.style.height=rect.height+'px';
+ ctx.setTransform(dpr,0,0,dpr,0,0); const w=rect.width, h=rect.height; ctx.clearRect(0,0,w,h); ctx.fillStyle='#111'; ctx.fillRect(0,0,w,h);
+ const chs=Math.min(2, buffer.numberOfChannels); const half=h/chs;
+ for(let ch=0; ch<chs; ch++){ const data=buffer.getChannelData(ch); const step=Math.max(1, Math.floor(data.length/w)); const amp=half*0.82; ctx.beginPath(); for(let i=0;i<w;i++){ let min=1,max=-1; const s=i*step,e=Math.min(s+step,data.length); for(let j=s;j<e;j++){ const v=data[j]; if(v<min)min=v; if(v>max)max=v; } const y1=(ch*half)+half/2+min*amp; if(i===0) ctx.moveTo(i,y1); ctx.lineTo(i,y1); } for(let i=w-1;i>=0;i--){ let min=1,max=-1; const s=i*step,e=Math.min(s+step,data.length); for(let j=s;j<e;j++){ const v=data[j]; if(v<min)min=v; if(v>max)max=v; } const y2=(ch*half)+half/2+max*amp; ctx.lineTo(i,y2); } ctx.closePath(); ctx.fillStyle= ch===0 ? '#8e8e93' : '#9e9e9e'; ctx.globalAlpha=0.95; ctx.fill(); ctx.globalAlpha=1; }
+}
+
+function playWebAudio(buffer, offsetSec){
+ const ctx=ensureCtx(); stopWebAudio(false); sourceNode=ctx.createBufferSource(); sourceNode.buffer=buffer; sourceNode.playbackRate.value=Math.pow(2, pitch/12);
+ sourceNode.connect(gainNode); startTime=ctx.currentTime - (offsetSec||0)/(sourceNode.playbackRate.value||1); pausedAt=offsetSec||0; isPlaying=true;
+ sourceNode.onended=()=>{ if(!isDraggingHead){ isPlaying=false; btnPlay.innerText='▶'; cancelAnimationFrame(rafId); if((ctx.currentTime-startTime)*(sourceNode?sourceNode.playbackRate.value:1)+pausedAt >= buffer.duration-0.05){ playhead.style.left='0%'; pausedAt=0; } } };
+ sourceNode.start(0, offsetSec||0); btnPlay.innerText='⏸'; startRafWebAudio();
+}
+function stopWebAudio(resetPaused=true){ if(sourceNode){ try{ sourceNode.onended=null; sourceNode.stop(); }catch{} sourceNode=null; } isPlaying=false; }
+function startRafWebAudio(){
+ cancelAnimationFrame(rafId);
+ function loop(){
+  if(!sourceNode||!audioBuffer||isDraggingHead) { if(isPlaying && !isDraggingHead) rafId=requestAnimationFrame(loop); return; }
+  const rate=sourceNode.playbackRate.value||1;
+  const elapsed=(audioCtx.currentTime-startTime)*rate;
+  const pct=Math.min(1, elapsed/audioBuffer.duration);
+  playhead.style.left=(pct*100)+'%';
+  timeCur.innerText=fmtTime(elapsed);
+  timeDur.innerText=fmtTime(audioBuffer.duration);
+  if(pct<1 && isPlaying) rafId=requestAnimationFrame(loop);
+  else if(pct>=1){ isPlaying=false; btnPlay.innerText='▶'; }
+ }
+ rafId=requestAnimationFrame(loop);
+}
+function seekToPct(pct){
+ pct=Math.max(0,Math.min(1,pct));
+ if(sourceNode && audioBuffer){
+  const newTime=pct*audioBuffer.duration;
+  pausedAt=newTime;
+  if(isPlaying){ playWebAudio(audioBuffer, newTime); }
+  else { playhead.style.left=(pct*100)+'%'; timeCur.innerText=fmtTime(newTime); }
+ } else if(playerAudio.duration){
+  playerAudio.currentTime=pct*playerAudio.duration;
+  playhead.style.left=(pct*100)+'%';
+ }
+}
+function seekByMs(deltaMs){
+ if(!audioBuffer) return;
+ const deltaSec=deltaMs/1000;
+ let curSec=pausedAt;
+ if(isPlaying && sourceNode && audioCtx){ curSec=(audioCtx.currentTime-startTime)*(sourceNode.playbackRate.value||1); }
+ curSec+=deltaSec;
+ curSec=Math.max(0, Math.min(audioBuffer.duration, curSec));
+ seekToPct(curSec/audioBuffer.duration);
+}
+btnPlay.onclick=()=>{
+ if(audioBuffer){
+  if(isPlaying){ pausedAt=(audioCtx.currentTime-startTime)*(sourceNode.playbackRate.value||1); stopWebAudio(false); isPlaying=false; btnPlay.innerText='▶'; cancelAnimationFrame(rafId); }else{ playWebAudio(audioBuffer, pausedAt); }
+  return;
+ }
+ if(playerAudio.src){ if(playerAudio.paused){ playerAudio.play(); btnPlay.innerText='⏸'; isPlaying=true; } else { playerAudio.pause(); btnPlay.innerText='▶'; isPlaying=false; } }
+};
+document.getElementById('btnRewind').onclick=()=>{ pausedAt=0; if(sourceNode&&audioBuffer){ playWebAudio(audioBuffer,0); }else{ playerAudio.currentTime=0; playhead.style.left='0%'; } };
+document.getElementById('btnMute').onclick=()=>{ playerAudio.muted=!playerAudio.muted; if(gainNode) gainNode.gain.value = playerAudio.muted?0:currentVolume; document.getElementById('btnMute').innerText=playerAudio.muted?'🔇':'🔊'; };
+volSlider.oninput=e=>{ currentVolume=parseFloat(e.target.value); playerAudio.volume=currentVolume; if(gainNode) gainNode.gain.value=currentVolume; playerAudio.muted=false; document.getElementById('btnMute').innerText='🔊'; };
+pitchSlider.oninput=e=>{ pitch=parseInt(e.target.value); pitchVal.innerText=pitch; const r=Math.pow(2, pitch/12); if(sourceNode) sourceNode.playbackRate.value=r; playerAudio.playbackRate=r; };
+document.getElementById('pitchReset').onclick=()=>{ pitch=0; pitchSlider.value=0; pitchVal.innerText='0'; if(sourceNode) sourceNode.playbackRate.value=1; playerAudio.playbackRate=1; };
+reverseCheck.onchange=e=>{ isReversed=e.target.checked; pausedAt=0; if(currentObj) play(currentObj, playingEl); };
+waveWrap.addEventListener('mousedown', e=>{
+ if(!audioBuffer && !playerAudio.duration) return;
+ isDraggingHead=true;
+ const rect=waveWrap.getBoundingClientRect();
+ const move=(ev)=>{ const p=Math.max(0,Math.min(1,(ev.clientX-rect.left)/rect.width)); playhead.style.left=(p*100)+'%'; timeCur.innerText=fmtTime(p*(audioBuffer?audioBuffer.duration:playerAudio.duration||0)); };
+ const up=(ev)=>{ document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); isDraggingHead=false; const r=waveWrap.getBoundingClientRect(); const p=Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width)); seekToPct(p); };
+ document.addEventListener('mousemove', move);
+ document.addEventListener('mouseup', up);
+});
+document.addEventListener('keydown', e=>{
+ const active=document.activeElement;
+ if(active && active.id==='searchCompact' && e.code==='Space') return;
+ if(e.code==='Space'){ e.preventDefault(); btnPlay.click(); }
+ else if(e.code==='ArrowRight'){ e.preventDefault(); seekByMs(2); }
+ else if(e.code==='ArrowLeft'){ e.preventDefault(); seekByMs(-2); }
+});
+const resizer=document.getElementById('resizer'); let isResizing=false;
+resizer.addEventListener('mousedown', e=>{ isResizing=true; resizer.classList.add('dragging'); document.body.style.cursor='ew-resize'; e.preventDefault(); });
+document.addEventListener('mousemove', e=>{ if(!isResizing) return; const mainRect=document.getElementById('main').getBoundingClientRect(); let newLeftWidth=e.clientX - mainRect.left; newLeftWidth=Math.max(180, Math.min(mainRect.width*0.65, newLeftWidth)); document.getElementById('left').style.width=newLeftWidth+'px'; });
+document.addEventListener('mouseup', ()=>{ if(isResizing){ isResizing=false; resizer.classList.remove('dragging'); document.body.style.cursor=''; } });
+
+function showToast(msg, isError){ var t=document.getElementById('toastMsg'); if(!t){ t=document.createElement('div'); t.id='toastMsg'; t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:'+(isError?'#4a2222':'#222')+';color:'+(isError?'#ff8a8a':'#fff')+';padding:10px 16px;border-radius:8px;border:1px solid '+(isError?'#6a3333':'#444')+';font-size:12px;font-weight:700;z-index:9999;box-shadow:0 8px 20px rgba(0,0,0,.6);max-width:90%;text-align:center;'; document.body.appendChild(t); } t.innerText=msg; t.style.display='block'; setTimeout(()=>{ t.style.display='none'; }, 4000); }
+function addToTimeline(obj){ const full=obj.fullPath||''; if(!full){ showToast('Full path not found', true); return; } const safe=full.replace(/\\/g,'\\\\').replace(/"/g,'\\"'); const dur=obj.durationSec||0; cs.evalScript(`importSoundFileSmart("${safe}", ${dur})`, function(res){ if(!res) return; if(res.indexOf('BUSY:')==0){ showToast('⚠️ '+res.replace('BUSY:',''), true); }else if(res.indexOf('Error:')==0){ showToast(res, true); }else{ showToast('✅ '+res, false); } }); }
+
+// ১৬০ms Debounce সহ সার্চ ইনপুট
+let searchTimer = null;
+searchEl.oninput = () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    const q = searchEl.value.trim();
+    if(q !== ''){
+      renderFileList(globalAllFiles, 'Global Search');
+    } else {
+      if(currentTab === 'fav'){
+        renderFavTab();
+      } else if(currentFolderPath){
+        const node = findNodeByPath(currentFolderPath);
+        if(node){
+          const isRoot = treeRoots.some(r => r.path === currentFolderPath);
+          const files = node.allFiles;
+          renderFileList(files, isRoot ? `All in ${getRootForPath(currentFolderPath).name} (${files.length})` : `${node.name} - All (${files.length})`);
+        }
+      }
+    }
+  }, 160);
+};
+
+function renderFavTab(){
+  currentTab='fav';
+  tabAll.classList.remove('active');
+  tabFav.classList.add('active');
+  const favFiles = globalAllFiles.filter(f => favSet.has(f.fullPath));
+  renderFileList(favFiles, `★ Favorites (${favFiles.length})`);
+}
+
+function renderAllTab(){
+  currentTab='all';
+  tabFav.classList.remove('active');
+  tabAll.classList.add('active');
+  if(currentFolderPath){
+    const node=findNodeByPath(currentFolderPath);
+    if(node){
+      const files=node.allFiles;
+      renderFileList(files, `${node.name} - All (${files.length})`);
+      return;
+    }
+  }
+  if(treeRoots.length>0){
+    const files=treeRoots[0].tree.allFiles;
+    renderFileList(files, `All in ${treeRoots[0].name} (${files.length})`);
+  }
+}
+
+tabAll.onclick=()=>{ renderAllTab(); };
+tabFav.onclick=()=>{ renderFavTab(); };
+
+document.getElementById('btnOpen').onclick=()=>{
+  function addRootFromPath(realPath){
+    if(!realPath) return; realPath=realPath.replace(/\\/g,'/');
+    if(treeRoots.some(r=>r.path===realPath)){ alert('Already added'); return; }
+    try{ if(!fs) fs=require('fs'); if(!pathNode) pathNode=require('path'); }catch{}
+    const id='root_'+Date.now(); const hiddenSet=new Set();
+    const tree=scanRealFolder(realPath, hiddenSet);
+    if(!tree){ alert('Cannot scan: '+realPath); return; }
+    treeRoots.push({id:id, path:realPath, name:(pathNode?pathNode.basename(realPath):realPath.split('/').pop()), tree:tree, hidden:hiddenSet});
+    rebuildGlobalCache();
+    saveRoots(); expandedNodes.add(realPath); saveExpanded(); renderTree();
+    currentRootId=id; currentFolderPath=realPath;
+    const files=tree.allFiles;
+    renderFileList(files, `All in ${tree.name} (${files.length})`);
+    showToast('✅ Added: '+tree.name+' ('+files.length+' files)', false);
+  }
+  try{ if(window.cep && window.cep.fs){ const r=window.cep.fs.showOpenDialog(false, true, 'Select Main SFX Folder', '', ''); if(r && r.data && r.data.length>0){ addRootFromPath(r.data[0]); return; } } }catch(e){}
+  cs.evalScript('(function(){ var f=Folder.selectDialog("Select Main SFX Folder"); if(f) f.fsName; else ""; })()', function(res){ if(res && res.trim()!==''){ addRootFromPath(res.replace(/\\/g,'/').trim().replace(/\"/g,'')); } });
+};
+
+loadRoots();
+renderTree();
+if(treeRoots.length>0){
+  currentRootId=treeRoots[0].id;
+  currentFolderPath=treeRoots[0].path;
+  const initFiles = treeRoots[0].tree.allFiles;
+  renderFileList(initFiles, `All in ${treeRoots[0].name} - All (${initFiles.length})`);
+}
+document.getElementById('btnClose').onclick=()=>{ cs.closeExtension(); };
+</script>
 </body>
 </html>
